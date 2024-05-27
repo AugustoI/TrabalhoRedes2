@@ -46,10 +46,6 @@ void *listenServer(void *vargp)
 
         if ((strcmp(commands[0], "OK") == 0) && (strcmp(commands[1], "01") == 0))
         {
-            if (running)
-            {
-                printf("Successful disconnect\n");
-            }
             running = 0;
             break;
         }
@@ -127,6 +123,8 @@ int main(int argc, char **argv)
         char **command = split(bufSend, " ");
         if (strcmp(command[0], "kill\n") == 0)
         {
+            running = 0;
+            printf("Successful disconnect\n");
             sprintf(bufSend, "REQ_REM %s", clientID);
         }
 
@@ -136,7 +134,6 @@ int main(int argc, char **argv)
         free(command);
     }
 
-    running = 0;
     pthread_cancel(thread_id1);
     pthread_cancel(thread_id2);
 
