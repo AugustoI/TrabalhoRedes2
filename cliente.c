@@ -44,6 +44,11 @@ void *listenServer(void *vargp)
             }
         }
 
+        if (strcmp(commands[0], "RES_INFOSE") == 0 && commands[1] != NULL)
+        {
+            printf("producao atual: %s kWh\n", commands[1]);
+        }
+
         if ((strcmp(commands[0], "OK") == 0) && (strcmp(commands[1], "01") == 0))
         {
             running = 0;
@@ -121,15 +126,36 @@ int main(int argc, char **argv)
         }
 
         char **command = split(bufSend, " ");
+        int validMessage = 0;
         if (strcmp(command[0], "kill\n") == 0)
         {
             running = 0;
             printf("Successful disconnect\n");
             sprintf(bufSend, "REQ_REM %s", clientID);
+            validMessage = 1;
         }
 
-        sendto(sockfd1, bufSend, strlen(bufSend), MSG_CONFIRM, (const struct sockaddr *)&servaddr1, sizeof(servaddr1));
-        sendto(sockfd2, bufSend, strlen(bufSend), MSG_CONFIRM, (const struct sockaddr *)&servaddr2, sizeof(servaddr2));
+        int justSE = 0;
+        int justSCII = 0;
+        if ((strcmp(command[0], "display") == 0) && (strcmp(command[1], "info") == 0) && (strcmp(command[2], "se\n") == 0))
+        {
+            sprintf(bufSend, "REQ_INFOSE");
+            validMessage = 1;
+            justSE = 1;
+        }
+
+        if (validMessage)
+        {
+            if (justSCII != 1)
+            {
+                sendto(sockfd1, bufSend, strlen(bufSend), MSG_CONFIRM, (const struct sockaddr *)&servaddr1, sizeof(servaddr1));
+            }
+        
+            if (justSE != 1)
+            {
+                sendto(sockfd2, bufSend, strlen(bufSend), MSG_CONFIRM, (const struct sockaddr *)&servaddr2, sizeof(servaddr2));
+            }
+        }
 
         free(command);
     }

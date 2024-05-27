@@ -88,6 +88,12 @@ char *excecuteCommand(char **command, struct sockaddr_in cliaddr) {
             sprintf(resposta, "ERROR 02");
         }
     }
+
+    if (strcmp(command[0], "REQ_INFOSE") == 0) {
+        srand(time(NULL));
+        int consumo = 20 + rand() % 31;
+        sprintf(resposta, "RES_INFOSE %d", consumo);
+    }
     return resposta;
 }
 
