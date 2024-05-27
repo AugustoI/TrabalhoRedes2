@@ -16,8 +16,6 @@
 
 struct cliente {
     char *id;
-    char *ip;
-    uint16_t port;
 };
 
 int clientesAdicionados;
@@ -33,55 +31,11 @@ float getValue() {
 int getFirstAvaiablePosition() {
     for (int i = 0; i < MAXDIPS; i++) {
         if (strcmp(clientes[i].id, "00") == 0) {
+            printf("id %s \n",clientes[i].id);
             return i;
         }
     }
     return -1;
-}
-
-void sendMessageTo(char *message, struct cliente disp) {
-    int sock;
-    if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-        perror("socket creation failed");
-        exit(EXIT_FAILURE);
-    }
-
-    struct sockaddr_in divice;
-    memset(&divice, 0, sizeof(divice));
-    divice.sin_family = AF_INET;
-    inet_pton(AF_INET, disp.ip, &(divice.sin_addr));
-    divice.sin_port = htons(disp.port);
-    socklen_t len = sizeof(divice);
-
-    sendto(sock, message, strlen(message), MSG_CONFIRM, (const struct sockaddr *)&divice, len);
-}
-
-void broadcast(char *message, char *avoidID) {
-    for (int i = 0; i < MAXDIPS; i++) {
-        if ((strcmp(clientes[i].id, "00") != 0) && (strcmp(clientes[i].id, avoidID) != 0)) {
-            sendMessageTo(message, clientes[i]);
-        }
-    }
-}
-
-void sendListDispAllDivices() {
-    char *listDisps = malloc(500 * sizeof(char));
-    int lenAux = 0;
-    for (int i = 0; i < MAXDIPS; i++) {
-        if (strcmp(clientes[i].id, "00") != 0) {
-            strcat(strcat(listDisps, clientes[i].id), " ");
-            lenAux++;
-        }
-    }
-    char lenStr[3];
-    sprintf(lenStr, "%d", lenAux);
-    char resp[MAXLINE];
-    strcpy(resp, "list");
-    strcat(resp, " ");
-    strcat(resp, lenStr);
-    strcat(resp, " ");
-    strcat(resp, listDisps);
-    broadcast(resp, "00");
 }
 
 char *excecuteCommand(char **command, struct sockaddr_in cliaddr) {
@@ -89,15 +43,11 @@ char *excecuteCommand(char **command, struct sockaddr_in cliaddr) {
     sprintf(resposta, "Invalid message");
     if (strcmp(command[0], "REQ_ADD") == 0) {
         if (clientesAdicionados < MAXDIPS) {
-            char *ip = inet_ntoa(cliaddr.sin_addr);
-            uint16_t port = htons(cliaddr.sin_port);
-            int id = getFirstAvaiablePosition() + 1;
-            snprintf(clientes[id].id, 3, "%d", id);
-            clientes[id].ip = malloc(15 * sizeof(char));
-            snprintf(clientes[id].ip, 15, "%s", ip);
-            clientes[id].port = port;
+            int i = getFirstAvaiablePosition();
+            int id = i + 1;
+            snprintf(clientes[i].id, 3, "%d", id);
             clientesAdicionados++;
-            sprintf(resposta, "RES_ADD %s", clientes[id].id);
+            sprintf(resposta, "RES_ADD %s", clientes[i].id);
         } else {
             sprintf(resposta, "ERROR 01");
         }
@@ -178,7 +128,7 @@ int main(int argc, char **argv) {
         recvfrom(sockfd, buf, MAXLINE, MSG_WAITALL, (struct sockaddr *)&cliaddr, &len);
 
         char *resposta;
-        printf("resp %s z\n",buf);
+        printf("message %s z\n",buf);
         resposta = excecuteCommand(split(buf, " "), *((struct sockaddr_in *)&cliaddr));
         printf("resp %s z\n",resposta);
         sendto(sockfd, resposta, strlen(resposta), MSG_CONFIRM, (const struct sockaddr *)&cliaddr, len);
