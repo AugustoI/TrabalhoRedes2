@@ -12,118 +12,135 @@
 
 #define MAXLINE 500
 
-struct sockaddr_in servaddr;
-int sockfd;
+struct sockaddr_in servaddr1, servaddr2;
+int sockfd1, sockfd2;
 
-char disps[MAXDIPS][3];
-char thisDiviceID[3];
+char clientID[3];
 
-void listDivices()
+void *listenServer(void *vargp)
 {
-    char *divices = malloc(MAXDIPS * 3 * sizeof(char));
-    for (int i = 0; i < MAXDIPS; i++)
-    {
-        if (strcmp(disps[i], "00") != 0)
-        {
-            if (strCompId(thisDiviceID, disps[i]) != 1)
-            {
-                strcat(strcat(divices, disps[i]), " ");
-            }
-        }
-    }
-    printf("%s\n", divices);
-}
+    int sockfd = *((int *)vargp);
+    struct sockaddr_in servaddr = sockfd == sockfd1 ? servaddr1 : servaddr2;
 
-void *
-listenServer(void *vargp)
-{
     while (1)
     {
         char buffer[MAXLINE];
-        socklen_t len;
+        socklen_t len = sizeof(servaddr);
         int n = recvfrom(sockfd, (char *)buffer, MAXLINE,
                          MSG_WAITALL, (struct sockaddr *)&servaddr,
                          &len);
         buffer[n] = '\0';
         char **commands = split(buffer, " ");
 
-        if (strcmp(commands[0], "New") == 0)
+        if (strcmp(commands[0], "RES_ADD") == 0 && commands[1] != NULL)
         {
-            strcpy(thisDiviceID, commands[2]);
-        }
-
-        if (strcmp(commands[0], "list") == 0)
-        {
-            int dispLen = atoi(commands[1]);
-            dispLen = dispLen + 2;
-
-            int j = 0;
-            for (int i = 2; i < dispLen; i++)
+            strcpy(clientID, commands[1]);
+            if (sockfd == sockfd1)
             {
-                strcpy(disps[j], commands[i]);
-                j++;
+                printf("Servidor SE New ID: %s \n", clientID);
+            }
+            else
+            {
+                printf("Servidor SCII New ID: %s \n", clientID);
             }
         }
-        else
+
+        if ((strcmp(commands[0], "OK") == 0) && (strcmp(commands[1], "01") == 0))
         {
-            printf("%s\n", buffer);
+            printf("Successful disconnect\n");
         }
+
+        if ((strcmp(commands[0], "ERROR") == 0) && (strcmp(commands[1], "01") == 0))
+        {
+            printf("Client limit exceeded\n");
+        }
+
+        if ((strcmp(commands[0], "ERROR") == 0) && (strcmp(commands[1], "02") == 0))
+        {
+            printf("Client not found\n");
+        }
+
+        free(commands);
     }
+    return NULL;
 }
 
 int main(int argc, char **argv)
 {
-    // Iniciar vetor de dispositivos
-    for (int i = 0; i < MAXDIPS; i++)
+    if (argc != 4)
     {
-        strcpy(disps[i], "00");
-    }
-
-    char bufSend[MAXLINE];
-
-    pthread_t thread_id;
-    pthread_create(&thread_id, NULL, listenServer, NULL);
-
-    strcpy(bufSend, "ins_dev ");
-
-    // Creating socket file descriptor
-    if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
-    {
-        perror("socket creation failed");
+        fprintf(stderr, "Usage: %s <server IP> <port 1> <port 2>\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
-    while (strcmp(bufSend, "exit\n") != 0)
+    char bufSend[MAXLINE];
+    pthread_t thread_id1, thread_id2;
+
+    if ((sockfd1 = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
     {
-        memset(&servaddr, 0, sizeof(servaddr));
-        // Configurando servidor
-        servaddr.sin_family = AF_INET;
-        inet_pton(AF_INET, argv[1], &(servaddr.sin_addr));
-        int port = 0;
-        sscanf(argv[2], "%d", &port);
-        servaddr.sin_port = htons(port);
-        if (strcmp(bufSend, "close connection\n") == 0)
-        {
-            sprintf(bufSend, "%s %s", "rem_dev", thisDiviceID);
-        }
-        char **command = split(bufSend, " ");
-        if (strcmp(command[0], "request") == 0)
-        {
-            sprintf(bufSend, "%s %s %s ", "request", command[3], thisDiviceID);
-        }
-        if (strcmp(command[0], "list") == 0)
-        {
-            listDivices();
-        }
-        else
-        {
-            sendto(sockfd, bufSend, MAXLINE - 1,
-                   MSG_CONFIRM, (const struct sockaddr *)&servaddr,
-                   sizeof(servaddr));
-        }
-        fgets(bufSend, MAXLINE - 1, stdin);
+        perror("socket creation failed for server 1");
+        exit(EXIT_FAILURE);
     }
 
-    close(sockfd);
+    if ((sockfd2 = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+    {
+        perror("socket creation failed for server 2");
+        exit(EXIT_FAILURE);
+    }
+
+    memset(&servaddr1, 0, sizeof(servaddr1));
+    memset(&servaddr2, 0, sizeof(servaddr2));
+
+    servaddr1.sin_family = AF_INET;
+    servaddr2.sin_family = AF_INET;
+
+    inet_pton(AF_INET, argv[1], &(servaddr1.sin_addr));
+    inet_pton(AF_INET, argv[1], &(servaddr2.sin_addr));
+
+    int port1 = 0, port2 = 0;
+    sscanf(argv[2], "%d", &port1);
+    sscanf(argv[3], "%d", &port2);
+
+    servaddr1.sin_port = htons(port1);
+    servaddr2.sin_port = htons(port2);
+
+    pthread_create(&thread_id1, NULL, listenServer, (void *)&sockfd1);
+    pthread_create(&thread_id2, NULL, listenServer, (void *)&sockfd2);
+
+    strcpy(bufSend, "REQ_ADD ");
+    sendto(sockfd1, bufSend, strlen(bufSend), MSG_CONFIRM, (const struct sockaddr *)&servaddr1, sizeof(servaddr1));
+    sendto(sockfd2, bufSend, strlen(bufSend), MSG_CONFIRM, (const struct sockaddr *)&servaddr2, sizeof(servaddr2));
+
+    while (1)
+    {
+        fgets(bufSend, MAXLINE - 1, stdin);
+
+        if (strcmp(bufSend, "exit\n") == 0)
+        {
+            break;
+        }
+
+        char **command = split(bufSend, " ");
+        if (strcmp(command[0], "kill\n") == 0)
+        {
+            sprintf(bufSend, "REQ_REM %s", clientID);
+        }
+
+        sendto(sockfd1, bufSend, strlen(bufSend), MSG_CONFIRM, (const struct sockaddr *)&servaddr1, sizeof(servaddr1));
+        sendto(sockfd2, bufSend, strlen(bufSend), MSG_CONFIRM, (const struct sockaddr *)&servaddr2, sizeof(servaddr2));
+
+        free(command);
+
+    }
+
+    close(sockfd1);
+    close(sockfd2);
+
+    pthread_cancel(thread_id1);
+    pthread_cancel(thread_id2);
+
+    pthread_join(thread_id1, NULL);
+    pthread_join(thread_id2, NULL);
+
     return 0;
 }

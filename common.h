@@ -2,7 +2,7 @@
 
 #include <stdlib.h>
 
-#define MAXDIPS 15
+#define MAXDIPS 10
 
 void logexit(const char *msg);
 
