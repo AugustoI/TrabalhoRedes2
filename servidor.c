@@ -18,7 +18,8 @@ struct cliente {
     char *id;
 };
 
-int clientesAdicionados;
+int clientesAdicionados = 0;
+int serverType = 0;
 struct cliente clientes[MAXDIPS];
 
 float getValue() {
@@ -31,7 +32,6 @@ float getValue() {
 int getFirstAvaiablePosition() {
     for (int i = 0; i < MAXDIPS; i++) {
         if (strcmp(clientes[i].id, "00") == 0) {
-            printf("id %s \n",clientes[i].id);
             return i;
         }
     }
@@ -47,6 +47,9 @@ char *excecuteCommand(char **command, struct sockaddr_in cliaddr) {
             int id = i + 1;
             snprintf(clientes[i].id, 3, "%d", id);
             clientesAdicionados++;
+            char message[50];
+            snprintf(message, sizeof(message), "Cliente %d added", id);
+            puts(message);
             sprintf(resposta, "RES_ADD %s", clientes[i].id);
         } else {
             sprintf(resposta, "ERROR 01");
@@ -60,8 +63,20 @@ char *excecuteCommand(char **command, struct sockaddr_in cliaddr) {
             if (strcmp(clientes[i].id, command[1]) == 0)
             {
                 clienteExiste = 1;
+                char* clientAddDell[3];
+                strcpy(clientAddDell, clientes[i].id);
                 strcpy(clientes[i].id, "00");
                 clientesAdicionados--;
+                char message[50];
+                if (serverType == 1)
+                {
+                    snprintf(message, sizeof(message), "Servidor SE Client %s removed", clientAddDell);
+                }
+                else
+                {
+                    snprintf(message, sizeof(message), "Servidor SCII Client %s removed", clientAddDell);
+                }
+                puts(message);
             }
         }
         if (clienteExiste == 1)
@@ -85,7 +100,10 @@ int main(int argc, char **argv) {
     char *ip_version = argv[1];
     int port;
     sscanf(argv[2], "%d", &port);
-
+    serverType = 2;
+    if (port == 12345)
+        serverType = 1;
+    
     clientesAdicionados = 0;
     for (int i = 0; i < MAXDIPS; i++) {
         clientes[i].id = malloc(2 * sizeof(char));
@@ -128,9 +146,7 @@ int main(int argc, char **argv) {
         recvfrom(sockfd, buf, MAXLINE, MSG_WAITALL, (struct sockaddr *)&cliaddr, &len);
 
         char *resposta;
-        printf("message %s z\n",buf);
         resposta = excecuteCommand(split(buf, " "), *((struct sockaddr_in *)&cliaddr));
-        printf("resp %s z\n",resposta);
         sendto(sockfd, resposta, strlen(resposta), MSG_CONFIRM, (const struct sockaddr *)&cliaddr, len);
     }
 

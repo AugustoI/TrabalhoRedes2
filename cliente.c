@@ -14,6 +14,7 @@
 
 struct sockaddr_in servaddr1, servaddr2;
 int sockfd1, sockfd2;
+volatile int running = 1; // Global flag to signal termination
 
 char clientID[3];
 
@@ -22,13 +23,11 @@ void *listenServer(void *vargp)
     int sockfd = *((int *)vargp);
     struct sockaddr_in servaddr = sockfd == sockfd1 ? servaddr1 : servaddr2;
 
-    while (1)
+    while (running)
     {
         char buffer[MAXLINE];
         socklen_t len = sizeof(servaddr);
-        int n = recvfrom(sockfd, (char *)buffer, MAXLINE,
-                         MSG_WAITALL, (struct sockaddr *)&servaddr,
-                         &len);
+        int n = recvfrom(sockfd, (char *)buffer, MAXLINE, MSG_WAITALL, (struct sockaddr *)&servaddr, &len);
         buffer[n] = '\0';
         char **commands = split(buffer, " ");
 
@@ -47,7 +46,12 @@ void *listenServer(void *vargp)
 
         if ((strcmp(commands[0], "OK") == 0) && (strcmp(commands[1], "01") == 0))
         {
-            printf("Successful disconnect\n");
+            if (running)
+            {
+                printf("Successful disconnect\n");
+            }
+            running = 0;
+            break;
         }
 
         if ((strcmp(commands[0], "ERROR") == 0) && (strcmp(commands[1], "01") == 0))
@@ -111,7 +115,7 @@ int main(int argc, char **argv)
     sendto(sockfd1, bufSend, strlen(bufSend), MSG_CONFIRM, (const struct sockaddr *)&servaddr1, sizeof(servaddr1));
     sendto(sockfd2, bufSend, strlen(bufSend), MSG_CONFIRM, (const struct sockaddr *)&servaddr2, sizeof(servaddr2));
 
-    while (1)
+    while (running)
     {
         fgets(bufSend, MAXLINE - 1, stdin);
 
@@ -130,17 +134,17 @@ int main(int argc, char **argv)
         sendto(sockfd2, bufSend, strlen(bufSend), MSG_CONFIRM, (const struct sockaddr *)&servaddr2, sizeof(servaddr2));
 
         free(command);
-
     }
 
-    close(sockfd1);
-    close(sockfd2);
-
+    running = 0;
     pthread_cancel(thread_id1);
     pthread_cancel(thread_id2);
 
     pthread_join(thread_id1, NULL);
     pthread_join(thread_id2, NULL);
 
+    close(sockfd1);
+    close(sockfd2);
+    exit(0);
     return 0;
 }
