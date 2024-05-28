@@ -20,6 +20,7 @@ struct cliente {
 
 int clientesAdicionados = 0;
 int serverType = 0;
+int capacidadePercentual = 0;
 struct cliente clientes[MAXDIPS];
 
 float getValue() {
@@ -94,6 +95,44 @@ char *excecuteCommand(char **command, struct sockaddr_in cliaddr) {
         int consumo = 20 + rand() % 31;
         sprintf(resposta, "RES_INFOSE %d", consumo);
     }
+
+    if (strcmp(command[0], "REQ_STATUS") == 0) {
+        srand(time(NULL));
+        int consumo = 20 + rand() % 31;
+        if (consumo >= 41)
+        {
+            sprintf(resposta, "RES_STATUS alta");
+        }
+        else if ((consumo >= 31) && (consumo <= 40)) {
+            sprintf(resposta, "RES_STATUS moderada");
+        }
+        else if ((consumo >= 20) && (consumo <= 30)) {
+            sprintf(resposta, "RES_STATUS baixa");
+        }
+    }
+
+    if (strcmp(command[0], "REQ_UP") == 0) {
+        srand(time(NULL));
+        int novaCapacidade = capacidadePercentual + rand() % 101;
+        sprintf(resposta, "RES_UP %d %d", capacidadePercentual, novaCapacidade);
+        capacidadePercentual = novaCapacidade;
+    }
+
+    if (strcmp(command[0], "REQ_NONE") == 0) {
+        sprintf(resposta, "RES_NONE %d", capacidadePercentual);
+    }
+
+    if (strcmp(command[0], "REQ_INFOSCII") == 0) {
+        sprintf(resposta, "RES_INFOSCII %d", capacidadePercentual);
+    }
+
+    if (strcmp(command[0], "REQ_DOWN") == 0) {
+        srand(time(NULL));
+        int novaCapacidade = 0 + rand() % capacidadePercentual;
+        sprintf(resposta, "RES_DOWN %d %d", capacidadePercentual, novaCapacidade);
+        capacidadePercentual = novaCapacidade;
+    }
+
     return resposta;
 }
 
@@ -106,9 +145,15 @@ int main(int argc, char **argv) {
     char *ip_version = argv[1];
     int port;
     sscanf(argv[2], "%d", &port);
-    serverType = 2;
     if (port == 12345)
+    {
         serverType = 1;
+    }
+    else
+    {
+        serverType = 2;
+        capacidadePercentual = 0 + rand() % 101;
+    }
     
     clientesAdicionados = 0;
     for (int i = 0; i < MAXDIPS; i++) {

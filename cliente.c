@@ -65,6 +65,47 @@ void *listenServer(void *vargp)
             printf("Client not found\n");
         }
 
+        if (strcmp(commands[0], "RES_STATUS") == 0 && commands[1] != NULL)
+        {
+            char bufSend[MAXLINE];
+            printf("estado atual: %s \n", commands[1]);
+
+            if (strcmp(commands[1], "alta") == 0)
+            {
+                sprintf(bufSend, "REQ_UP");
+            }
+
+            if (strcmp(commands[1], "moderada") == 0)
+            {
+                sprintf(bufSend, "REQ_NONE");
+            }
+
+            if (strcmp(commands[1], "baixa") == 0)
+            {
+                sprintf(bufSend, "REQ_DOWN");
+            }
+
+            sendto(sockfd2, bufSend, strlen(bufSend), MSG_CONFIRM, (const struct sockaddr *)&servaddr2, sizeof(servaddr2));
+            puts("enviado");
+        }
+
+        if (strcmp(commands[0], "RES_UP") == 0 && (commands[1] != NULL) && (commands[2] != NULL))
+        {
+            printf("consumo antigo: %s \n", commands[1]);
+            printf("consumo atual: %s \n", commands[2]);
+        }
+
+        if (strcmp(commands[0], "RES_DOWN") == 0 && (commands[1] != NULL) && (commands[2] != NULL))
+        {
+            printf("consumo antigo: %s \n", commands[1]);
+            printf("consumo atual: %s \n", commands[2]);
+        }
+
+        if (strcmp(commands[0], "RES_NONE") == 0 && (commands[1] != NULL))
+        {
+            printf("consumo antigo: %s \n", commands[1]);
+        }
+
         free(commands);
     }
     return NULL;
@@ -140,6 +181,13 @@ int main(int argc, char **argv)
         if ((strcmp(command[0], "display") == 0) && (strcmp(command[1], "info") == 0) && (strcmp(command[2], "se\n") == 0))
         {
             sprintf(bufSend, "REQ_INFOSE");
+            validMessage = 1;
+            justSE = 1;
+        }
+
+        if ((strcmp(command[0], "query") == 0) && (strcmp(command[1], "condition\n") == 0))
+        {
+            sprintf(bufSend, "REQ_STATUS");
             validMessage = 1;
             justSE = 1;
         }
