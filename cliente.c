@@ -49,6 +49,11 @@ void *listenServer(void *vargp)
             printf("producao atual: %s kWh\n", commands[1]);
         }
 
+        if (strcmp(commands[0], "RES_INFOSCII") == 0 && commands[1] != NULL)
+        {
+            printf("consumo atual: %s \n", commands[1]);
+        }
+
         if ((strcmp(commands[0], "OK") == 0) && (strcmp(commands[1], "01") == 0))
         {
             running = 0;
@@ -86,7 +91,6 @@ void *listenServer(void *vargp)
             }
 
             sendto(sockfd2, bufSend, strlen(bufSend), MSG_CONFIRM, (const struct sockaddr *)&servaddr2, sizeof(servaddr2));
-            puts("enviado");
         }
 
         if (strcmp(commands[0], "RES_UP") == 0 && (commands[1] != NULL) && (commands[2] != NULL))
@@ -183,6 +187,13 @@ int main(int argc, char **argv)
             sprintf(bufSend, "REQ_INFOSE");
             validMessage = 1;
             justSE = 1;
+        }
+
+        if ((strcmp(command[0], "display") == 0) && (strcmp(command[1], "info") == 0) && (strcmp(command[2], "scii\n") == 0))
+        {
+            sprintf(bufSend, "REQ_INFOSCII");
+            validMessage = 1;
+            justSCII = 1;
         }
 
         if ((strcmp(command[0], "query") == 0) && (strcmp(command[1], "condition\n") == 0))

@@ -20,7 +20,7 @@ struct cliente {
 
 int clientesAdicionados = 0;
 int serverType = 0;
-int capacidadePercentual = 0;
+int capacidadePercentual = -1;
 struct cliente clientes[MAXDIPS];
 
 float getValue() {
